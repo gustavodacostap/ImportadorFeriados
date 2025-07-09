@@ -16,6 +16,6 @@
         public DateTime? Padroeiro { get; set; }
         public string? DescPadroeiro => Padroeiro.HasValue ? "Padroeiro(a) da cidade" : null;
 
-        public List<(DateTime Data, string Descricao, string Periodicidade)> OutrosFeriados { get; set; } = new();
+        public List<(DateTime Data, string Descricao)> OutrosFeriados { get; set; } = new();
     }
 }

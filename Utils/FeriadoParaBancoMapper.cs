@@ -36,7 +36,7 @@ namespace ImportadorFeriados.Utils
         {
             foreach (var f in feriadoMunicipais)
             {
-                // 1) aniversário de cidade
+                // 1) Aniversário de cidade
                 if (f.AniversarioCidade.HasValue)
                 {
                     yield return new FeriadoParaBanco
@@ -91,17 +91,17 @@ namespace ImportadorFeriados.Utils
                 }
 
                 // 4) Outros feriados
-                foreach (var (data, desc, periodicidade) in f.OutrosFeriados)
+                foreach (var (data, desc) in f.OutrosFeriados)
                 {
                     yield return new FeriadoParaBanco
                     {
                         DS_FERIADO = desc,
                         DIA_FERIADO = (short)data.Day,
                         MES_FERIADO = (short)data.Month,
-                        ANO_FERIADO = periodicidade == FeriadoGuids.PERIODIC_ANUAL ? null : (short)data.Year,
+                        ANO_FERIADO =  null,
                         CD_TP_FERIADO = FeriadoGuids.TIPO_FERIADO,
                         CD_ABRANGENCIA = FeriadoGuids.ABRANG_MUNICIPAL,
-                        CD_PERIODICIDADE = periodicidade,
+                        CD_PERIODICIDADE = FeriadoGuids.PERIODIC_ANUAL,
                         CD_UF = 19,
                         USU_INCL = usuarioInclusao,
                         Cidade = f.Cidade

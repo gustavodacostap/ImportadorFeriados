@@ -17,12 +17,13 @@ public class ImportadorFeriadosClasse
             .Get<ImportadorFeriadosConfig>() ?? throw new Exception("Configuração 'ImportadorFeriados' não encontrada.");
     public void Importar()
     {
+        // Monta a connection string para conectar ao banco DB2
         string connStr = $"Driver={{IBM DB2 ODBC DRIVER}};Database={_config.NomeDoBanco};Hostname={_config.Hostname};Port={_config.Porta};Uid={_config.Usuario};Pwd={_config.Senha};";
 
         var dbService = new DbService(connStr, _config.Schema);
 
+        // Lê os dados do Excel (feriados nacionais/estaduais e municipais)
         var excelReader = new ExcelReader(_config.CaminhoArquivoExcel);
-
         var feriadosNE = excelReader.LerFeriadosNacionaisEstaduais();
         var feriadosMunicipais = excelReader.LerFeriadosMunicipais();
 
@@ -37,8 +38,6 @@ public class ImportadorFeriadosClasse
         var feriadosVinculados = new List<string>();
         var feriadosIgnorados = new List<string>();
         var localidadesNaoEncontradas = new List<string>();
-
-        Console.WriteLine("=======================================");
 
         // Loop sobre todos os feriados lidos do Excel
         foreach (var feriado in todos)

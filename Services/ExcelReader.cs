@@ -54,11 +54,21 @@ namespace ImportadorFeriados.Services
                 if (linha.Cell(1).TryGetValue(out DateTime data))
                 { 
                     feriado.Data = data;
-                    Console.Write(data.ToString("dd/MM/yyyy") + " - ");
+
+                    // Verifica se a data é 09/07 (Consciência Negra)
+                    if (data.Day == 9 && data.Month == 7)
+                    {
+                        feriado.Abrangencia = FeriadoGuids.ABRANG_ESTADUAL;
+                        feriado.UFCode = 19;
+                    }
+                    else
+                    {
+                        feriado.Abrangencia = FeriadoGuids.ABRANG_NACIONAL;
+                        feriado.UFCode = 0;
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($"[Aviso] Linha {linha.RowNumber()}: DATA inválida ou vazia. Linha ignorada.");
                     continue;
                 }
 
@@ -66,52 +76,29 @@ namespace ImportadorFeriados.Services
                 if (linha.Cell(3).TryGetValue(out string descricao))
                 {
                     feriado.Descricao = descricao;
-                    Console.Write($"{descricao} - ");
 
                     // Verifica se é uma ponte (ignora maiúsculas/minúsculas)
                     if (descricao.Contains("ponte", StringComparison.OrdinalIgnoreCase))
                     {
                         feriado.Tipo = FeriadoGuids.TIPO_PONTE;
-                        Console.Write("PONTE - ");
                     }                        
                     else
                     {
                         feriado.Tipo = FeriadoGuids.TIPO_FERIADO;
-                        Console.Write("FERIADO - ");
                     }
-                }
-
-                // Coluna 4: Abrangência do feriado
-                if (linha.Cell(4).TryGetValue(out string abrangencia))
-                {
-                    abrangencia = abrangencia.Trim();
-                    if (abrangencia.Contains("NACIONAL", StringComparison.OrdinalIgnoreCase))
-                    {
-                        feriado.Abrangencia = FeriadoGuids.ABRANG_NACIONAL;
-                        feriado.UFCode = 0;
-                        Console.Write("NACIONAL - ");
-                    }
-                    else
-                    {
-                        feriado.Abrangencia = FeriadoGuids.ABRANG_ESTADUAL;
-                        feriado.UFCode = 19;
-                        Console.Write("ESTADUAL - ");
-                    }                       
                 }
 
                 // Coluna 5: Periodicidade do feriado
-                if (linha.Cell(5).TryGetValue(out string peridiocidade))
+                if (linha.Cell(4).TryGetValue(out string peridiocidade))
                 {
                     peridiocidade = peridiocidade.Trim();
                     if (peridiocidade.Contains("anual", StringComparison.OrdinalIgnoreCase))
                     { 
                         feriado.Periodicidade = FeriadoGuids.PERIODIC_ANUAL;
-                        Console.Write("ANUAL\n");
                     }
                 else
                     {
                         feriado.Periodicidade = FeriadoGuids.PERIODIC_EVENTUAL;
-                        Console.Write("EVENTUAL\n");
                     }                   
                 }
                 lista.Add(feriado);
@@ -138,18 +125,12 @@ namespace ImportadorFeriados.Services
                     feriado.Cidade = cidade;
                 else
                 {
-                    Console.WriteLine($"[Aviso] Linha {linha.RowNumber()}: CIDADE inválida ou vazia. Linha ignorada.");
                     continue;
                 }
                 // Coluna 2: ANIVERSÁRIO DA CIDADE
                 if (linha.Cell(2).TryGetValue(out DateTime aniversario))
                     feriado.AniversarioCidade = aniversario;
                     
-                else
-                {
-                    Console.WriteLine($"[Aviso] Linha {linha.RowNumber()}: ANIVERSÁRIO DA CIDADE ausente ou inválido.");
-                }
-
                 // Coluna 3: PONTE
                 if (linha.Cell(3).TryGetValue(out DateTime ponte))
                     feriado.Ponte = ponte;
@@ -192,20 +173,11 @@ namespace ImportadorFeriados.Services
                     }
                 }
 
-                // Coluna 6: Periodicidade do feriado
-                var periodicidade = FeriadoGuids.PERIODIC_ANUAL;
-                if (linha.Cell(6).TryGetValue(out string peridiocidade))
-                {
-                    if (peridiocidade.Contains("eventual", StringComparison.OrdinalIgnoreCase))
-                        periodicidade = FeriadoGuids.PERIODIC_EVENTUAL;
-                }
-
                 if (dataFeriado.HasValue)
                 {
                     feriado.OutrosFeriados.Add((
                         dataFeriado.Value,
-                        descricao,
-                        periodicidade
+                        descricao
                     ));
                 }
 

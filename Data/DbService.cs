@@ -35,8 +35,6 @@ namespace ImportadorFeriados.Data
             conn.Open();
             SetSchema(conn);
 
-            Console.WriteLine($"🔍 Verificando existência do feriado: {feriado.DS_FERIADO} - {feriado.DIA_FERIADO}/{feriado.MES_FERIADO}/{feriado.ANO_FERIADO}");
-
             if (FeriadoJaExiste(conn, feriado, out int cdFeriadoExistente))
             {
                 // Trata feriado que já existe no banco (pode ou não estar vinculado à cidade)
@@ -112,8 +110,6 @@ namespace ImportadorFeriados.Data
         /// </summary>
         private ResultadoInsercaoFeriado TratarFeriadoExistente(OdbcConnection conn, FeriadoParaBanco feriado, int cdFeriado)
         {
-            Console.WriteLine($"Feriado encontrado em TB_FERIADO (CD_FERIADO = {cdFeriado})");
-
             // Só faz verificação de vínculo se for municipal
             if (feriado.CD_ABRANGENCIA == FeriadoGuids.ABRANG_MUNICIPAL && !string.IsNullOrWhiteSpace(feriado.Cidade))
             {
@@ -123,24 +119,21 @@ namespace ImportadorFeriados.Data
                     // Verifica se já está vinculado à cidade
                     if (FeriadoJaVinculado(conn, cdFeriado, locNu.Value))
                     {
-                        Console.WriteLine($"!OK! Já existe vínculo com {feriado.Cidade}. Ignorando inserção.\n");
                         return new ResultadoInsercaoFeriado(null, null, true);
                     }
                     else
                     {
-                        Console.WriteLine($"!!!!!! Feriado existe, mas ainda **não** vinculado a {feriado.Cidade}. Vamos criar o vínculo.\n");
+                        //Feriado existe, mas ainda não vinculado à cidade. Cria o vínculo.
                         return new ResultadoInsercaoFeriado(cdFeriado, locNu, true);
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"!!! Localidade não encontrada: {feriado.Cidade}\n");
                     return new ResultadoInsercaoFeriado(null, null, true);
                 }
             }
 
             // Se não for municipal, ignora
-            Console.WriteLine("7777 Feriado já existe (abrangência não é municipal). Ignorando inserção.\n");
             return new ResultadoInsercaoFeriado(null, null, true);
         }
 
@@ -151,8 +144,8 @@ namespace ImportadorFeriados.Data
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-        SELECT 1 FROM TB_FERIADO_LOCALIDADE
-        WHERE CD_FERIADO = ? AND LOC_NU = ?";
+                SELECT 1 FROM TB_FERIADO_LOCALIDADE
+                WHERE CD_FERIADO = ? AND LOC_NU = ?";
 
             cmd.Parameters.AddWithValue("@CD_FERIADO", cdFeriado);
             cmd.Parameters.AddWithValue("@LOC_NU", locNu);
@@ -165,16 +158,14 @@ namespace ImportadorFeriados.Data
         /// </summary>
         private static int InserirNovoFeriado(OdbcConnection conn, FeriadoParaBanco feriado)
         {
-            Console.WriteLine("(NEW) Feriado ainda não existe no banco. Inserindo...");
-
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-        INSERT INTO TB_FERIADO (
-            DS_FERIADO, DIA_FERIADO, MES_FERIADO, ANO_FERIADO,
-            CD_TP_FERIADO, CD_ABRANGENCIA, CD_PERIODICIDADE, CD_UF,
-            IND_ATIVO, DELETED, USU_INCL, CD_UNI_INCL, DT_HR_INCL,
-            USU_ALT, CD_UNI_ALT, DT_HR_ALT, CD_GUID_REFERENCIA_PAI
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                INSERT INTO TB_FERIADO (
+                    DS_FERIADO, DIA_FERIADO, MES_FERIADO, ANO_FERIADO,
+                    CD_TP_FERIADO, CD_ABRANGENCIA, CD_PERIODICIDADE, CD_UF,
+                    IND_ATIVO, DELETED, USU_INCL, CD_UNI_INCL, DT_HR_INCL,
+                    USU_ALT, CD_UNI_ALT, DT_HR_ALT, CD_GUID_REFERENCIA_PAI
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             cmd.Parameters.AddWithValue("@DS_FERIADO", feriado.DS_FERIADO);
             cmd.Parameters.AddWithValue("@DIA_FERIADO", feriado.DIA_FERIADO);
@@ -212,8 +203,6 @@ namespace ImportadorFeriados.Data
                 var locNu = ObterLocalidadePorNome(feriado.Cidade);
                 if (!locNu.HasValue)
                     Console.WriteLine($"!!! Localidade não encontrada ao tentar vincular novo feriado: {feriado.Cidade}");
-                else
-                    Console.WriteLine($"✔ Localidade encontrada para novo feriado: {feriado.Cidade} (LOC_NU = {locNu})");
 
                 return locNu;
             }
@@ -228,12 +217,6 @@ namespace ImportadorFeriados.Data
         {
             using var conn = new OdbcConnection(_connectionString);
             conn.Open();
-
-            //using (var setSchemaCmd = conn.CreateCommand())
-            //{
-            //    setSchemaCmd.CommandText = $"SET SCHEMA {_schema}";
-            //    setSchemaCmd.ExecuteNonQuery();
-            //}
 
             SetSchema(conn);
 

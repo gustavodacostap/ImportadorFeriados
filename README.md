@@ -15,6 +15,7 @@ Automatizar o processo de importação de feriados por meio da leitura de uma ar
 
 ## 📁 Estrutura do Projeto
 
+```
 📦 ImportadorFeriados
 ┣ 📂Config # Configurações
 ┣ 📂Data # Conexão e acesso ao banco de dados
@@ -23,6 +24,7 @@ Automatizar o processo de importação de feriados por meio da leitura de uma ar
 ┣ 📂Utils # Funções utilitárias (ex: removedor de acentos)
 ┣ 📜.gitignore # Arquivos e pastas ignoradas pelo Git
 ┣ 📜ImportadorFeriados.cs # Classe principal que orquestra a importação
+````
 
 ## 🛠️ Tecnologias Utilizadas
 

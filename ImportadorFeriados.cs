@@ -1,8 +1,9 @@
-﻿using ImportadorFeriados.Data;
+﻿using ImportadorFeriados.Config;
+using ImportadorFeriados.Data;
 using ImportadorFeriados.Services;
-using ImportadorFeriados.Config;
 using ImportadorFeriados.Utils;
 using Microsoft.Extensions.Configuration;
+using System.Text;
 
 namespace ImportadorFeriados;
 
@@ -32,16 +33,24 @@ public class ImportadorFeriadosClasse
             .FromNacionaisEstaduais(_config.Usuario)
             .Concat(feriadosMunicipais.FromMunicipais(_config.Usuario));
 
-        // Apenas para debug
+        // Listas auxiliares para armazenar os resultados e depois montar o arquivo de log
         var feriadosInseridos = new List<string>();
         var feriadosJaExistentes = new List<string>();
         var feriadosVinculados = new List<string>();
         var feriadosIgnorados = new List<string>();
         var localidadesNaoEncontradas = new List<string>();
 
+        var logBuilder = new StringBuilder(); // StringBuilder para gerar log em arquivo
+
+        int total = todos.Count();
+        int atual = 0;
+
         // Loop sobre todos os feriados lidos do Excel
         foreach (var feriado in todos)
         {
+            atual++;
+            LogUtils.MostrarBarraProgresso(atual, total);
+
             // Tenta inserir ou localizar o feriado no banco
             var resultado = dbService.InserirFeriado(feriado);
 
@@ -56,14 +65,20 @@ public class ImportadorFeriadosClasse
                 else
                 {
                     // Já existia **e já tinha vínculo** (ou não é municipal)
-                    feriadosIgnorados.Add($"{feriado.DS_FERIADO} - {feriado.DIA_FERIADO}/{feriado.MES_FERIADO}/{feriado.ANO_FERIADO}");
+                    string info = $"{feriado.DS_FERIADO} - {feriado.DIA_FERIADO}/{feriado.MES_FERIADO}/{feriado.ANO_FERIADO}";
+                    if (!string.IsNullOrWhiteSpace(feriado.Cidade))
+                        info += $" - {feriado.Cidade}";
+                    feriadosIgnorados.Add(info);
                 }
 
                 continue;
             }
 
             // Novo feriado: adiciona à lista de inseridos
-            feriadosInseridos.Add($"{feriado.DS_FERIADO} - {feriado.DIA_FERIADO}/{feriado.MES_FERIADO}/{feriado.ANO_FERIADO}");
+            string novoLog = $"{feriado.DS_FERIADO} - {feriado.DIA_FERIADO}/{feriado.MES_FERIADO}/{feriado.ANO_FERIADO}";
+            if (!string.IsNullOrWhiteSpace(feriado.Cidade))
+                novoLog += $" - {feriado.Cidade}";
+            feriadosInseridos.Add(novoLog);
 
             // Se a localidade foi identificada com sucesso, insere o vínculo
             if (resultado.LocNu.HasValue)
@@ -77,24 +92,38 @@ public class ImportadorFeriadosClasse
             }
         }
 
-        // Debug
-        Console.WriteLine("\n====== FERIADOS INSERIDOS (NOVOS) ======");
+        Console.WriteLine("\nImportação finalizada com sucesso.");
+
+        // Montando o arquivo log
+        logBuilder.AppendLine("====== FERIADOS INSERIDOS (NOVOS) ======");
         foreach (var f in feriadosInseridos)
-            Console.WriteLine(f);
+            logBuilder.AppendLine(f);
 
-        Console.WriteLine("\n====== FERIADOS JÁ EXISTIAM, MAS FORAM VINCULADOS À CIDADE ======");
+        logBuilder.AppendLine("\n====== FERIADOS JÁ EXISTIAM, MAS FORAM VINCULADOS À CIDADE ======");
         foreach (var f in feriadosVinculados)
-            Console.WriteLine(f);
+            logBuilder.AppendLine(f);
 
-        Console.WriteLine("\n====== FERIADOS IGNORADOS (QUE JÁ EXISTIAM, COM VÍNCULO OU SEM) ======");
+        logBuilder.AppendLine("\n====== FERIADOS IGNORADOS (QUE JÁ EXISTIAM, COM VÍNCULO OU SEM) ======");
         foreach (var f in feriadosIgnorados)
-            Console.WriteLine(f);
+            logBuilder.AppendLine(f);
 
         if (localidadesNaoEncontradas.Count != 0)
         {
-            Console.WriteLine("\n====== FERIADOS MUNICIPAIS COM LOCALIDADES NÃO ENCONTRADAS ======");
+            logBuilder.AppendLine("\n====== FERIADOS MUNICIPAIS COM LOCALIDADES NÃO ENCONTRADAS ======");
         }
         foreach (var cidade in localidadesNaoEncontradas.Distinct())
-            Console.WriteLine($"! Localidade não encontrada: {cidade}");
+            logBuilder.AppendLine($"! Localidade não encontrada: {cidade}");
+
+        // Cria pasta Logs ao lado do executável, se não existir
+        var pastaLogs = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+        Directory.CreateDirectory(pastaLogs);
+
+        // Caminho do arquivo com timestamp
+        var caminhoLog = Path.Combine(pastaLogs, $"log_feriados_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+
+        // Escreve o conteúdo do log
+        File.WriteAllText(caminhoLog, logBuilder.ToString());
+
+        Console.WriteLine($"\nLog salvo em: {caminhoLog}");
     }
 }

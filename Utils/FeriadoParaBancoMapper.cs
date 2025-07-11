@@ -1,4 +1,5 @@
 ﻿using ImportadorFeriados.Models;
+using ImportadorFeriados.Models.Importação;
 using ImportadorFeriados.Utils;
 
 namespace ImportadorFeriados.Utils

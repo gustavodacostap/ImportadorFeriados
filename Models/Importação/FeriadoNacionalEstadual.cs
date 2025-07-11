@@ -1,4 +1,4 @@
-﻿namespace ImportadorFeriados.Models
+﻿namespace ImportadorFeriados.Models.Importação
 {
     /// <summary>
     /// Representa um feriado nacional ou estadual, com os dados básicos

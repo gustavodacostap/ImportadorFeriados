@@ -1,5 +1,6 @@
-﻿using ImportadorFeriados.Utils;
-using ImportadorFeriados.Models;
+﻿using ImportadorFeriados.Models;
+using ImportadorFeriados.Models.Exportação;
+using ImportadorFeriados.Utils;
 using System.Data.Odbc;
 
 namespace ImportadorFeriados.Data
@@ -241,6 +242,101 @@ namespace ImportadorFeriados.Data
                 }
             }
             return null;
+        }
+        public List<FeriadoNE> BuscarFeriadosNacionaisEstaduais(int ano)
+        {
+            var feriados = new List<FeriadoNE>();
+
+            using var conn = new OdbcConnection(_connectionString);
+            conn.Open();
+            SetSchema(conn);
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT 
+                    DIA_FERIADO, MES_FERIADO, 
+                    COALESCE(ANO_FERIADO, ?) AS ANO_FERIADO,
+                    DS_FERIADO,
+                    CD_PERIODICIDADE
+                FROM TB_FERIADO
+                WHERE CD_ABRANGENCIA IN (?, ?)
+                AND (ANO_FERIADO = ? OR ANO_FERIADO IS NULL)
+                ORDER BY MES_FERIADO, DIA_FERIADO";
+
+            cmd.Parameters.AddWithValue("@ANO1", ano);
+            cmd.Parameters.AddWithValue("@ABR_NACIONAL", FeriadoGuids.ABRANG_NACIONAL);
+            cmd.Parameters.AddWithValue("@ABR_ESTADUAL", FeriadoGuids.ABRANG_ESTADUAL);
+            cmd.Parameters.AddWithValue("@ANO2", ano);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                int dia = Convert.ToInt32(reader["DIA_FERIADO"]);
+                int mes = Convert.ToInt32(reader["MES_FERIADO"]);
+                int anoFeriado = Convert.ToInt32(reader["ANO_FERIADO"]);
+
+                feriados.Add(new FeriadoNE
+                {
+                    Data = new DateTime(anoFeriado, mes, dia),
+                    Descricao = reader["DS_FERIADO"].ToString() ?? "",
+                    Periodicidade = (reader["CD_PERIODICIDADE"]?.ToString() == FeriadoGuids.PERIODIC_ANUAL) ? "ANUAL" : "EVENTUAL"
+                });
+            }
+
+            return feriados;
+        }
+
+        public List<FeriadoMunicipalBruto> BuscarFeriadosMunicipais(int ano)
+        {
+            var feriados = new List<FeriadoMunicipalBruto>();
+
+            using var conn = new OdbcConnection(_connectionString);
+            conn.Open();
+            SetSchema(conn);
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT 
+                    L.LOC_NO AS CIDADE,
+                    F.DS_FERIADO,
+                    F.DIA_FERIADO,
+                    F.MES_FERIADO,
+                    COALESCE(F.ANO_FERIADO, ?) AS ANO_FERIADO,
+                    F.CD_TP_FERIADO
+                FROM TB_FERIADO F
+                INNER JOIN TB_FERIADO_LOCALIDADE FL ON FL.CD_FERIADO = F.CD_FERIADO
+                INNER JOIN TB_LOCALIDADE L ON L.LOC_NU = FL.LOC_NU
+                WHERE F.CD_ABRANGENCIA = ?
+                AND (F.ANO_FERIADO = ? OR F.ANO_FERIADO IS NULL)
+                ORDER BY L.LOC_NO";
+
+            cmd.Parameters.AddWithValue("@ANO", ano);
+            cmd.Parameters.AddWithValue("@ABR_MUNICIPAL", FeriadoGuids.ABRANG_MUNICIPAL);
+            cmd.Parameters.AddWithValue("@ANO2", ano);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                string descricao = reader["DS_FERIADO"]?.ToString() ?? "";
+                string cidade = reader["CIDADE"].ToString() ?? "";
+                string tipo = reader["CD_TP_FERIADO"]?.ToString() ?? "";
+                int dia = Convert.ToInt32(reader["DIA_FERIADO"]);
+                int mes = Convert.ToInt32(reader["MES_FERIADO"]);
+                int anoF = Convert.ToInt32(reader["ANO_FERIADO"]);
+
+                if (descricao.ToLower().Contains("consci") && descricao.ToLower().Contains("negra"))
+                    continue;
+
+                feriados.Add(new FeriadoMunicipalBruto
+                {
+                    Cidade = cidade,
+                    Data = new DateTime(anoF, mes, dia),
+                    Descricao = descricao,
+                    Tipo = tipo
+                });
+            }
+
+            return feriados;
         }
     }
 }

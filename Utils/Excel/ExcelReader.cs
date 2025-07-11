@@ -1,8 +1,7 @@
 ﻿using ClosedXML.Excel;
-using ImportadorFeriados.Models;
-using ImportadorFeriados.Utils;
+using ImportadorFeriados.Models.Importação;
 
-namespace ImportadorFeriados.Services
+namespace ImportadorFeriados.Utils.Excel
 {
     public class ExcelReader
     {
@@ -12,7 +11,7 @@ namespace ImportadorFeriados.Services
         /// Construtor que recebe o caminho do arquivo Excel a ser lido.
         /// </summary>
         public ExcelReader(string caminhoArquivo) =>
-            (_caminhoArquivo) = (caminhoArquivo);
+            _caminhoArquivo = caminhoArquivo;
 
         /// <summary>
         /// Abre a planilha com o nome informado no arquivo Excel.
@@ -28,11 +27,19 @@ namespace ImportadorFeriados.Services
             }
             catch (IOException)
             {
-                throw new IOException($"Erro ao abrir o arquivo Excel. Verifique se o arquivo '{_caminhoArquivo}' está fechado antes de rodar o programa.");
+                string msg = $"!! Erro ao abrir o arquivo Excel. Verifique se o arquivo '{_caminhoArquivo}' está fechado antes de rodar o programa.";
+                Console.WriteLine(msg);
+                Environment.Exit(1); // encerra o programa com código de erro 1
+                return null!; // só para o compilador não reclamar
             }
 
             if (!workbook.Worksheets.Any(p => p.Name == nomePlanilha))
-                throw new Exception($"Planilha '{nomePlanilha}' não encontrada!");
+            {
+                string msg = $"!! Planilha '{nomePlanilha}' não encontrada!";
+                Console.WriteLine(msg);
+                Environment.Exit(1);
+                return null!;
+            }
 
             return workbook.Worksheet(nomePlanilha);
         }
@@ -75,7 +82,7 @@ namespace ImportadorFeriados.Services
                 // Coluna 3: Descrição do feriado
                 if (linha.Cell(3).TryGetValue(out string descricao))
                 {
-                    feriado.Descricao = descricao;
+                    feriado.Descricao = descricao.Trim();
 
                     // Verifica se é uma ponte (ignora maiúsculas/minúsculas)
                     if (descricao.Contains("ponte", StringComparison.OrdinalIgnoreCase))

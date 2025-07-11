@@ -12,6 +12,8 @@ Automatizar o processo de importação de feriados por meio da leitura de uma ar
 - É chamado dentro do sistema principal da organização.
 - Realiza a **leitura de um arquivo Excel local**.
 - Processa os dados e insere/atualiza os feriados no banco de dados.
+- Gera um arquivo .txt com os logs de resultados da importação.
+- Gera um arquivo Excel com os feriados atualizados do banco de dados, permitindo a visualização e verificação dos feriados importados.
 
 ## 📁 Estrutura do Projeto
 

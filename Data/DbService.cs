@@ -243,6 +243,11 @@ namespace ImportadorFeriados.Data
             }
             return null;
         }
+
+        /// <summary>
+        /// Busca feriados nacionais e estaduais cadastrados no banco de dados para um determinado ano.
+        /// Feriados com ANO_FERIADO nulo são considerados como anuais e assumem o ano informado na busca.
+        /// </summary>
         public List<FeriadoNE> BuscarFeriadosNacionaisEstaduais(int ano)
         {
             var feriados = new List<FeriadoNE>();
@@ -286,6 +291,11 @@ namespace ImportadorFeriados.Data
             return feriados;
         }
 
+        /// <summary>
+        /// Busca feriados municipais cadastrados no banco para um determinado ano, vinculados às localidades (cidades).
+        /// Feriados com ANO_FERIADO nulo são considerados como anuais e assumem o ano informado.
+        /// Feriados relacionados à "Consciência Negra" são ignorados, pois antes de 2024 não eram feriados nacionais, então no banco ainda estão relacionados com algumas cidades.
+        /// </summary>
         public List<FeriadoMunicipalBruto> BuscarFeriadosMunicipais(int ano)
         {
             var feriados = new List<FeriadoMunicipalBruto>();
@@ -324,6 +334,7 @@ namespace ImportadorFeriados.Data
                 int mes = Convert.ToInt32(reader["MES_FERIADO"]);
                 int anoF = Convert.ToInt32(reader["ANO_FERIADO"]);
 
+                // Ignora feriados relacionados à Consciência Negra
                 if (descricao.ToLower().Contains("consci") && descricao.ToLower().Contains("negra"))
                     continue;
 

@@ -1,5 +1,9 @@
 ﻿namespace ImportadorFeriados.Models.Exportação
 {
+    /// <summary>
+    /// Representa um feriado municipal bruto, apenas com os dados
+    /// necessários para a exportação em Excel
+    /// </summary>
     public class FeriadoMunicipalBruto
     {
         public string Cidade { get; set; } = "";

@@ -1,5 +1,8 @@
-﻿using ImportadorFeriados.Config;
+﻿using DocumentFormat.OpenXml.InkML;
+using ImportadorFeriados.Config;
 using ImportadorFeriados.Data;
+using ImportadorFeriados.Models.Exportação;
+using ImportadorFeriados.Models.Importação;
 using ImportadorFeriados.Utils;
 using ImportadorFeriados.Utils.Excel;
 using Microsoft.Extensions.Configuration;
@@ -18,30 +21,20 @@ public class ImportadorFeriadosClasse
             .Get<ImportadorFeriadosConfig>() ?? throw new Exception("Configuração 'ImportadorFeriados' não encontrada.");
     public void Importar()
     {
-        // Monta a connection string para conectar ao banco DB2
-        string connStr = $"Driver={{IBM DB2 ODBC DRIVER}};Database={_config.NomeDoBanco};Hostname={_config.Hostname};Port={_config.Porta};Uid={_config.Usuario};Pwd={_config.Senha};";
-
-        var dbService = new DbService(connStr, _config.Schema);
-
-        // Lê os dados do Excel (feriados nacionais/estaduais e municipais)
-        var excelReader = new ExcelReader(_config.CaminhoArquivoExcel);
-        var feriadosNE = excelReader.LerFeriadosNacionaisEstaduais();
-        var feriadosMunicipais = excelReader.LerFeriadosMunicipais();
-
-        // Concatena todos os feriados
-        var todos = feriadosNE
-            .FromNacionaisEstaduais(_config.Usuario)
+        var dbService = CriarDbService();
+        var (feriadosNE, feriadosMunicipais) = LerFeriadosDoExcel();
+        var todos = feriadosNE.FromNacionaisEstaduais(_config.Usuario)
             .Concat(feriadosMunicipais.FromMunicipais(_config.Usuario));
 
         // Listas auxiliares para armazenar os resultados e depois montar o arquivo de log
         var feriadosInseridos = new List<string>();
-        var feriadosJaExistentes = new List<string>();
         var feriadosVinculados = new List<string>();
         var feriadosIgnorados = new List<string>();
         var localidadesNaoEncontradas = new List<string>();
 
         var logBuilder = new StringBuilder(); // StringBuilder para gerar log em arquivo
 
+        // Variáveis auxiliares para controle de progresso
         int total = todos.Count();
         int atual = 0;
 
@@ -96,28 +89,29 @@ public class ImportadorFeriadosClasse
 
         // Montando o arquivo log
         logBuilder.AppendLine("====== FERIADOS INSERIDOS (NOVOS) ======");
-        if (feriadosInseridos.Count() == 0)
+        if (!feriadosInseridos.Any())
             logBuilder.AppendLine("Não foram inseridos novos feriados.");
         foreach (var f in feriadosInseridos)
-                logBuilder.AppendLine(f);
+            logBuilder.AppendLine(f);
 
         logBuilder.AppendLine("\n====== FERIADOS JÁ EXISTIAM, MAS FORAM VINCULADOS À CIDADE ======");
-        if (feriadosVinculados.Count() == 0)
+        if (!feriadosVinculados.Any())
             logBuilder.AppendLine("Não foram vinculados feriados que já existiam.");
         foreach (var f in feriadosVinculados)
             logBuilder.AppendLine(f);
 
         logBuilder.AppendLine("\n====== FERIADOS IGNORADOS (QUE JÁ EXISTIAM, COM VÍNCULO OU SEM) ======");
-        if (feriadosIgnorados.Count() == 0)
+        if (!feriadosIgnorados.Any())
             logBuilder.AppendLine("Não foram ignorados feriados.");
         foreach (var f in feriadosIgnorados)
             logBuilder.AppendLine(f);
 
         logBuilder.AppendLine("\n====== FERIADOS MUNICIPAIS COM LOCALIDADES NÃO ENCONTRADAS ======");
-        if (localidadesNaoEncontradas.Count == 0)
+        if (!localidadesNaoEncontradas.Any())
             logBuilder.AppendLine("Todas as localidades foram encontradas.");
         foreach (var cidade in localidadesNaoEncontradas.Distinct())
-                logBuilder.AppendLine($"! Localidade não encontrada: {cidade}");
+            logBuilder.AppendLine($"! Localidade não encontrada: {cidade}");
+
 
         // Cria pasta Results ao lado do executável, se não existir
         var pastaResults = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Results");
@@ -131,17 +125,28 @@ public class ImportadorFeriadosClasse
 
         Console.WriteLine($"\nLog salvo em: {caminhoLog}");
 
-        var feriadosNEex = dbService.BuscarFeriadosNacionaisEstaduais(2025);
-        var feriadosMunicipaisEx = dbService.BuscarFeriadosMunicipais(2025);
-
-        foreach (var feriado in feriadosNEex)
-        {
-            Console.WriteLine($"{feriado.Data:dd/MM/yyyy} ({feriado.Data:dddd}) - {feriado.Descricao} - {feriado.Periodicidade}");
-        }
+        // Busca feriados do banco para gerar o Excel
+        var feriadosNEex = dbService.BuscarFeriadosNacionaisEstaduais(DateTime.Now.Year);
+        var feriadosMunicipaisEx = dbService.BuscarFeriadosMunicipais(DateTime.Now.Year);
 
         var caminhoExcel = Path.Combine(pastaResults, $"resultado_feriados_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
 
+        // Gera o Excel com os feriados encontrados
         var geradorExcel = new GeradorExcel(feriadosNEex, feriadosMunicipaisEx, feriadosMunicipais, caminhoExcel);
         geradorExcel.GerarExcelDeFeriados();
+    }
+
+    private DbService CriarDbService()
+    {
+        // Monta a connection string para conectar ao banco DB2
+        string connStr = $"Driver={{IBM DB2 ODBC DRIVER}};Database={_config.NomeDoBanco};Hostname={_config.Hostname};Port={_config.Porta};Uid={_config.Usuario};Pwd={_config.Senha};";
+        return new DbService(connStr, _config.Schema);
+    }
+
+    // Lê os dados do Excel (feriados nacionais/estaduais e municipais)
+    private (List<FeriadoNacionalEstadual>, List<FeriadoMunicipal>) LerFeriadosDoExcel()
+    {      
+        var excelReader = new ExcelReader(_config.CaminhoArquivoExcel);
+        return (excelReader.LerFeriadosNacionaisEstaduais(), excelReader.LerFeriadosMunicipais());
     }
 }
